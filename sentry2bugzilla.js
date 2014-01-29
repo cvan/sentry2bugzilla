@@ -7,6 +7,10 @@
 
 (function() {
 
+$ = function(s) {
+    return document.querySelector(s);
+};
+
 function serialize(obj) {
     var qs = [];
     Object.keys(obj).forEach(function(key) {
@@ -16,27 +20,38 @@ function serialize(obj) {
 }
 
 var params = {
-    'bug_file_loc': $('td a[href*="://"]').attr('href') || '',
+    'bug_file_loc': $('td a[href*="://"]').getAttribute('href') || '',
     'op_sys': 'All',
     'rep_platform': 'All',
-    'short_desc': '[traceback] ' + $('.details p.message').text() + '; ' +
-        $('.details h3').text()
+    'short_desc': '[traceback] ' + $('.details p.message').textContent + '; ' +
+        $('.details h3').textContent
 };
 
-$('.sidebar .flat dt:first-child, .sidebar .flat dt:first-child + dd').remove();
+// Remove "Status" label.
+var $status = $('.sidebar .flat dt:first-child');
+$status.parentNode.removeChild($status);
 
-var aggData = $('.sidebar .flat').text().trim();
-aggData = aggData ? ('* ' + aggData) : '';
+// Remove "Status" value.
+$status = $('.sidebar .flat dd:first-child');
+$status.parentNode.removeChild($status);
+
+var aggData = $('.sidebar .flat').textContent;
+
+if (!aggData) {
+    return;
+}
+
+aggData = '* ' + aggData.trim();
 
 params.comment = (
     'Sentry URL:\n\n' + window.location.href +
     '\n\n\nAggregate Details:\n\n' + aggData.replace(/ +/g, ' ')
         .replace(/\n\s+/g, '\n').replace(/:\n/g, ': ').replace(/\n/g, '\n* ') +
-    '\n* Number of Tracebacks: ' + $('[data-count]').attr('data-count') +
-    '\n\n\nTraceback:\n\n' + $('#raw_stacktrace').text().trim() + '\n'
+    '\n* Number of Tracebacks: ' + $('[data-count]').getAttribute('data-count') +
+    '\n\n\nTraceback:\n\n' + $('#raw_stacktrace').textContent.trim() + '\n'
 );
 
-var product = $('#team-banner small').text();
+var product = $('#team-banner small').textContent;
 
 if (product.indexOf('addons') !== -1 ||
     params.bug_file_loc.indexOf('//addons.') !== -1 ||
@@ -54,7 +69,7 @@ if (product.indexOf('mkt') !== -1 ||
 var components = {
     'addons.mozilla.org': {
         '\/(admin|editors)\/': 'Admin/Editor Tools',
-        '\/api\/v\d+/': 'API',
+        '\/api\/v\d+\/': 'API',
         '\/collections\/': 'Collections',
         '\/developers\/': 'Developer Pages',
         '\/discovery\/': 'Discovery Pane',
@@ -82,7 +97,8 @@ var components = {
 if (params.product) {
     var patterns = components[params.product];
     Object.keys(patterns).forEach(function(pattern) {
-        if (!params.component && new RegExp(pattern).test(params.bug_file_loc)) {
+        if (!params.component &&
+            new RegExp(pattern).test(params.bug_file_loc)) {
             params.component = patterns[pattern];
         }
     });
@@ -90,15 +106,17 @@ if (params.product) {
 
 var bugURL = 'https://bugzilla.mozilla.org/enter_bug.cgi?' + serialize(params);
 
-function addslashes(str) {
-    return (str + '').replace(/[\\"']/g, '\\$&').replace(/\u0000/g, '\\0');
-}
+// Show button on only traceback pages.
+var b = document.createElement('button');
+b.innerHTML = 'File bug';
+b.setAttribute('class', 'btn');
+b.setAttribute('style',
+    'background: hotpink; color: #fff; margin-bottom: 20px; width: 100%');
+b.onclick = function() {
+    window.open(bugURL);
+};
 
-bugURL = addslashes(bugURL);
-
-if (aggData) {
-    // Show button on only traceback pages.
-    $('<button onclick="window.open(\'' + bugURL + '\')" class="btn" style="background: hotpink; color: #fff; margin-bottom: 20px; width: 100%">File bug</button>').prependTo('.sidebar');
-}
+var $sidebar = $('.sidebar');
+$sidebar.insertBefore(b, $sidebar.firstChild);
 
 })();
